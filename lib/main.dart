@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'src/locations.dart' as locations;
@@ -28,26 +30,80 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final Map<String, Marker> _markers = {};
-  Future<void> _onMapCreated(GoogleMapController controller) async {
-    final googleOffices = await locations.getGoogleOffices();
-    setState(
-      () {
-        _markers.clear();
-        for (final office in googleOffices.offices) {
-          final marker = Marker(
-            markerId: MarkerId(office.name),
-            position: LatLng(office.lat, office.lng),
-            infoWindow: InfoWindow(
-              title: office.name,
-              snippet: office.address,
-            ),
-          );
-          _markers[office.name] = marker;
-        }
-      },
-    );
+  Completer<GoogleMapController> _controller = Completer();
+  final Set<Marker> _markers = {};
+  LatLng _lastMapPosition = _center;
+  MapType _currentMapType = MapType.normal;
+
+  static const LatLng _center = const LatLng(45.521563, -122.677433);
+
+  void _onMapCreated(GoogleMapController controller) {
+    _controller.complete(controller);
   }
+
+  void _onMapTypeButtonPressed() {
+    setState(() {
+      _currentMapType = _currentMapType == MapType.normal
+          ? MapType.satellite
+          : MapType.normal;
+    });
+  }
+
+  void _onCameraMove(CameraPosition position) {
+    _lastMapPosition = position.target;
+  }
+
+  void _onTapAddMarker(LatLng tapPosition) {
+    setState(() {
+      _markers.add(
+        Marker(
+          markerId: MarkerId(tapPosition.toString()),
+          position: tapPosition,
+          icon:
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        ),
+      );
+    });
+  }
+
+  void _onAddMarkerButtonPressed() {
+    setState(() {
+      _markers.add(
+        Marker(
+          // This marker id can be anything that uniquely identifies each marker.
+          markerId: MarkerId(_lastMapPosition.toString()),
+          position: _lastMapPosition,
+          infoWindow: InfoWindow(
+            title: 'Really cool place',
+            snippet: '5 star Rating',
+          ),
+          icon:
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        ),
+      );
+    });
+  }
+
+  // final Map<String, Marker> _markers = {};
+  // Future<void> _onMapCreated(GoogleMapController controller) async {
+  //   final googleOffices = await locations.getGoogleOffices();
+  //   setState(
+  //     () {
+  //       _markers.clear();
+  //       for (final office in googleOffices.offices) {
+  //         final marker = Marker(
+  //           markerId: MarkerId(office.name),
+  //           position: LatLng(office.lat, office.lng),
+  //           infoWindow: InfoWindow(
+  //             title: office.name,
+  //             snippet: office.address,
+  //           ),
+  //         );
+  //         _markers[office.name] = marker;
+  //       }
+  //     },
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -56,13 +112,49 @@ class _MyHomePageState extends State<MyHomePage> {
         title: const Text('Google Office Locations'),
         backgroundColor: Colors.green[700],
       ),
-      body: GoogleMap(
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: CameraPosition(
-          target: LatLng(0, 0),
-          zoom: 2,
-        ),
-        markers: _markers.values.toSet(),
+      body: Stack(
+        children: [
+          GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: CameraPosition(
+              target: _center,
+              zoom: 2.0,
+            ),
+            mapType: _currentMapType,
+            markers: _markers,
+            onCameraMove: _onCameraMove,
+            onTap: _onTapAddMarker,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Column(
+                children: [
+                  FloatingActionButton(
+                    onPressed: _onMapTypeButtonPressed,
+                    materialTapTargetSize: MaterialTapTargetSize.padded,
+                    backgroundColor: Colors.green,
+                    child: const Icon(
+                      Icons.map,
+                      size: 36.0,
+                    ),
+                  ),
+                  SizedBox(height: 16.0),
+                  FloatingActionButton(
+                    onPressed: _onAddMarkerButtonPressed,
+                    materialTapTargetSize: MaterialTapTargetSize.padded,
+                    backgroundColor: Colors.green,
+                    child: const Icon(
+                      Icons.add_location,
+                      size: 36.0,
+                    ),
+                  )
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
