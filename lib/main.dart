@@ -35,6 +35,9 @@ class _MyHomePageState extends State<MyHomePage> {
   LatLng _lastMapPosition = _center;
   MapType _currentMapType = MapType.normal;
 
+  TextEditingController _titleController = TextEditingController();
+  TextEditingController _snippetController = TextEditingController();
+
   static const LatLng _center = const LatLng(45.521563, -122.677433);
 
   void _onMapCreated(GoogleMapController controller) {
@@ -53,12 +56,17 @@ class _MyHomePageState extends State<MyHomePage> {
     _lastMapPosition = position.target;
   }
 
-  void _onTapAddMarker(LatLng tapPosition) {
+  Future<void> _onTapAddMarker(LatLng tapPosition) async {
+    await _getTitleAndSnippet(context);
     setState(() {
       _markers.add(
         Marker(
           markerId: MarkerId(tapPosition.toString()),
           position: tapPosition,
+          infoWindow: InfoWindow(
+            title: _titleController.value.text,
+            snippet: _snippetController.value.text,
+          ),
           icon:
               BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
         ),
@@ -156,6 +164,38 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ],
       ),
+    );
+  }
+
+  _getTitleAndSnippet(BuildContext context) {
+    return showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          elevation: 8,
+          backgroundColor: Colors.white,
+          title: Text('Marker Info'),
+          content: Column(
+            children: [
+              TextField(
+                controller: _titleController,
+              ),
+              SizedBox(
+                height: 12,
+              ),
+              TextField(
+                controller: _snippetController,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Complete'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
